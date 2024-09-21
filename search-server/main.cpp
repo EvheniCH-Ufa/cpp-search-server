@@ -1,11 +1,11 @@
 #include <algorithm>
 #include <iostream>
-#include <cmath>
-#include <map>
 #include <set>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
+#include <cmath>
 
 
 using namespace std;
@@ -46,11 +46,19 @@ vector<string> SplitIntoWords(const string& text) {
     return words;
 }
 
+
 struct Document
 {
     int id;
     double relevance;
 };
+
+struct Query
+{	
+    set<string> plus_words_;
+    set<string> minus_words;
+};
+
 
 
 class SearchServer
@@ -66,13 +74,13 @@ public:
     {
         vector<string> document_word_no_stop = SplitIntoWordsNoStop(document);
 
-        double tf = 0.0;
-        if (document_word_no_stop.size() > 0)
+        double tf = 1.0 / document_word_no_stop.size();; // Замечание №1(+)
+/*        if (document_word_no_stop.size() > 0)   // тут была реализована "защита от дурака", т.к априори входящий документ может полностью состоять из стоп-слов и сюда вернуться уже пустым. Но если надо - уберу
         {
             tf = 1.0 / document_word_no_stop.size();
-        }
+        }*/
 
-        for (string word : document_word_no_stop)
+        for (const string& word : document_word_no_stop)  // Замечание №2(+): Честно сказать еще просто не привык писать так и забыл перед отправкой все перепроверить на КОНСТ и ССЫЛОЧНОСТЬ
         {
             key_words_documents_TF_[word][document_id] += tf;  // то есть если это слово будет дважды, то оно прибавится
         }
@@ -81,8 +89,8 @@ public:
 
     vector<Document> FindTopDocuments(const string& raw_query) const
     {
-        const set<string> query_words = ParseQuery(raw_query);
-        auto matched_documents = FindAllDocuments(query_words);
+        const Query query = ParseQuery(raw_query);  // popravil
+        auto matched_documents = FindAllDocuments(query);
 
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
@@ -97,11 +105,31 @@ public:
 private:
     int documents_count_ = 0;
 
+//    map<string, set<int>> key_words_documents_;
     // key_word     id     TF
     map<string, map<int, double>> key_words_documents_TF_;
 
     set<string> stop_words_;
 
+
+	double CalculateIDF (map<int, double>& docs_id_tf) const
+	{
+		int count_docs_id_tf = docs_id_tf.size(); // мощность этого словаря (количество)
+		double idf;
+		
+        // тут проверка, если кол-во доков == мощности словаря, то есть слово есть во всех доках., то IDF=0
+        if (count_docs_id_tf == documents_count_)   // Замечание №6(+) перенес ---------------------------------------------------------------
+        {
+			idf = 0;   // если слово есть во всех доках, то цена ему = 0
+        }
+        else   
+        {
+            idf = 1.0 * log(1.0 * documents_count_ / count_docs_id_tf);
+		}
+		return idf;
+	}
+
+	
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
     }
@@ -116,63 +144,57 @@ private:
         return words;
     }
 
-    set<string> ParseQuery(const string& text) const {
-        set<string> query_words;
-        for (const string& word : SplitIntoWordsNoStop(text)) {
-            query_words.insert(word);
-        }
-        return query_words;
-    }
 
-    vector<Document> FindAllDocuments(const set<string>& query_words) const
+    Query ParseQuery(const string& text) const
+	{
+        Query query;
+        for (const string& word : SplitIntoWordsNoStop(text)) {
+            if (word[0] != '-')
+            {
+				query.plus_words_.insert(word);
+			}
+			else
+			{
+				query.minus_words.insert(word.substr(1, word.size()-1)); // удаляем первый символ и записываем в банк минус-слов);
+			}
+        }										// Замечание №3(+): готово
+        return query;
+    }											
+
+    vector<Document> FindAllDocuments(const Query& query) const // Замечание №4(+): переписал 
     {
         //  id   relev
         map<int, double> findet_docs;
         vector <string> minus_words;
 
-        for (const string& query_word : query_words)
-        {
-            if (query_word.size() > 0)
-            {
-                if (query_word[0] == '-')                           // то есть, это минус-слово
-                {
-                    minus_words.push_back(query_word.substr(1, query_word.size()-1)); // удаляем первый символ и записываем в банк минус-слов
-                }
-                else
-                {
-                    auto iterator_current_key_word = key_words_documents_TF_.find(query_word);  // иначе ищем документы по слову запроса в банке слов 
-                    if (iterator_current_key_word != key_words_documents_TF_.end())             // если нашли
-                    {
-                        auto& docs_id_tf = iterator_current_key_word->second;                    // записали в переменную словарь с id и tf документов по этому слову
-                        int docs_count_po_query_word = docs_id_tf.size();   // мощность этого словаря (количество)    
-                        
-                        for (const auto& doc_id_tf : docs_id_tf)                  // обход по map_у найденных документов (мап) по ключу ИД 
-                        {
-                            // тут проверка, если кол-во доков == мощности словаря, то есть слово есть во всех доках., то IDF=0
-                            double idf = 0;
-                            if (docs_count_po_query_word != documents_count_)
-                            {
-                                idf = 1.0 * log(1.0 * documents_count_ / docs_count_po_query_word);
-                            }
-                            findet_docs[doc_id_tf.first] += (1.0 * doc_id_tf.second * idf);  // и увеличиваем релевантность уже на эту TF-IDF - типа суммируем
-                        }  // блин, замудрено-то как....
-                    }
-                }
-            }
-        }
+	    if (!query.plus_words_.empty()) // Замечание №5(+): то есть, если плюс-слов нет, то и по минусам нечего шахаться
+      	{ 
+			for (const string& query_plus_word : query.plus_words_) 
+    	    {
+/*				Замечание №7(+): я, конечно, убрал итератор. но мне кажется что это хорошая защита от дурака, т.к.
+				at() генерит исключение, если в запросе будет слово, которого нет ни в одном документе либо вручную бегать по всему МАПу
+				но, видимо, мы к это вернемся в теме "Обработка исключений" try....		*/
+				map <int, double> docs_id_tf = key_words_documents_TF_.at(query_plus_word);  // записали в переменную словарь с id и tf документов по этому слову
 
-        for (string minus_word : minus_words)
-        {
-            auto iterator_current_minus_word = key_words_documents_TF_.find(minus_word);  // теперь ищем по минус-слову индекс в банке слов - в каких доках оно есть
-            if (iterator_current_minus_word != key_words_documents_TF_.end())             // если нашли
-            {
-                for (const auto& doc_id_tf : iterator_current_minus_word->second)                     // в найденных документах (мап) по ключу ИД обход
+				double idf = CalculateIDF(docs_id_tf); // Замечание №6(+): вынес отдельно, но с проверкой на то, что слова не входит во все доки сразу 
+  					    
+                for (const auto& doc_id_tf : docs_id_tf)                  // обход по map_у найденных документов (мап) по ключу ИД 
                 {
-                    findet_docs.erase(doc_id_tf.first);                          // и удаляем из найденных доков эти документы 
-                }
-            }
-        };
-
+                    findet_docs[doc_id_tf.first] += (1.0 * doc_id_tf.second * idf);  // и увеличиваем релевантность уже на эту TF-IDF - типа суммируем
+                }  // так стало, конечно, значительно проще 
+			}		
+			
+        	for (string query_minus_word : query.minus_words)
+        	{
+//   			тут тоже убрал итератор
+				auto docs_id_tf = key_words_documents_TF_.at(query_minus_word);  // записали в переменную словарь с id и tf документов по этому minus-слову
+              	for (const auto& doc_id_tf : docs_id_tf)                     // в найденных документах (мап) по ключу ИД обход
+               	{
+                   	findet_docs.erase(doc_id_tf.first);                          // и удаляем из найденных доков эти документы 
+	            }
+        	}
+		}
+		
         vector<Document> matched_documents;
 
         for (const auto findet_doc : findet_docs)
@@ -208,5 +230,5 @@ int main()
             << "relevance = "s << document.relevance << " }"s << endl;
     }
 
-    //   system("pause");
+      // system("pause");
 }
