@@ -80,7 +80,6 @@ bool InTextLastSymbolIsMinus(const string& text)
     return false;
 }
 
-
 vector<string> SplitIntoWords(const string& text) {
     vector<string> words;
     string word;
@@ -140,7 +139,6 @@ public:
 
 //    -Конструкторы класса SearchServer должны выбрасывать исключение invalid_argument,
 //      если любое из переданных стоп - слов содержит недопустимые символы, то есть символы с кодами от 0 до 31.
-
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words)
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
