@@ -1,3 +1,5 @@
+// p03_05_06_ObrabotkaOshibokVPoiskovojSisteme.cpp
+
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -37,39 +39,6 @@ bool IsSpecialSymbol(const char c)
     return false;
 }
 
-bool TextHaveSpecialSymbol(const string& text)
-{
-    for (const char c : text) {
-        if (IsSpecialSymbol(c))
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool SearchInTextMinusAndSpaseOrTwoMinuses(const string& text)
-{
-    for (size_t i = 1; i < text.size(); ++i)
-    {
-        if ((text[i - 1] == '-' && text[i] == '-') || (text[i - 1] == '-' && text[i] == ' '))
-            return true;
-    }
-
-    return false;
-}
-
-template <typename StringContainer>
-bool TextsHavesSpecialSymbol(const StringContainer& strings) {
-    for (const string& str : strings) {
-        if (TextHaveSpecialSymbol(str))
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool InTextLastSymbolIsMinus(const string& text)
 {
     size_t text_len = text.size();
@@ -79,6 +48,7 @@ bool InTextLastSymbolIsMinus(const string& text)
     }
     return false;
 }
+
 
 vector<string> SplitIntoWords(const string& text) {
     vector<string> words;
@@ -135,10 +105,9 @@ enum class DocumentStatus {
 
 class SearchServer {
 public:
-    inline static constexpr int INVALID_DOCUMENT_ID = -1;
-
 //    -Конструкторы класса SearchServer должны выбрасывать исключение invalid_argument,
 //      если любое из переданных стоп - слов содержит недопустимые символы, то есть символы с кодами от 0 до 31.
+
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words)
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
@@ -152,10 +121,6 @@ public:
         : SearchServer(
             SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
     {
-        if (TextsHavesSpecialSymbol(stop_words_))
-        {
-            throw invalid_argument("stop_words_ haves special symbols");
-        }
     }
 
 /*
@@ -166,11 +131,23 @@ public:
   - Наличие недопустимых символов (с кодами от 0 до 31) в тексте добавляемого документа.*/
     void AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings)
     {
-        //      Попытка добавить документ
-        // с отрицательным id  или        с сущест id               или   текст со спецсимволами
-        if ((document_id < 0) || (documents_.count(document_id) > 0) || (TextHaveSpecialSymbol(document)))
+        // Попытка добавить документ:
+        // с отрицательным id
+        if (document_id < 0) 
         {
-            throw invalid_argument("id is \"-\" or is exist, or text have special symbols");
+            throw invalid_argument("id is \"-\"");
+        }
+
+        //     с сущест id          
+        if (documents_.count(document_id) > 0) 
+        {
+            throw invalid_argument("id is exist");
+        }
+
+        //  текст со спецсимволами
+        if (TextHaveSpecialSymbol(document))
+        {
+            throw invalid_argument("text have special symbols");
         }
 
         const vector<string> words = SplitIntoWordsNoStop(document);
@@ -191,11 +168,6 @@ public:
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const
     {
-        if (TextHaveSpecialSymbol(raw_query) || SearchInTextMinusAndSpaseOrTwoMinuses(raw_query) || InTextLastSymbolIsMinus(raw_query))
-        {
-            throw invalid_argument("(Text Have Special Symbol) or (In Text Minus_And_Spase Or Two_Minuses) or (In Text Last Symbol Is Minus)");
-        }
-
         const Query query = ParseQuery(raw_query);
 
         auto result = FindAllDocuments(query, document_predicate);
@@ -238,11 +210,6 @@ public:
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const
     {
-        if (TextHaveSpecialSymbol(raw_query) || SearchInTextMinusAndSpaseOrTwoMinuses(raw_query) || InTextLastSymbolIsMinus(raw_query))
-        {
-            throw invalid_argument("(Text Have Special Symbol) or (In Text Minus_And_Spase Or Two_Minuses) or (In Text Last Symbol Is Minus)");
-        }
-
         const Query query = ParseQuery(raw_query);
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
@@ -262,7 +229,7 @@ public:
                 break;
             }
         }
-        return tuple{ matched_words, documents_.at(document_id).status };
+        return make_tuple(matched_words, documents_.at(document_id).status );
     }
 
 /*    -Метод GetDocumentId должен выбрасывать исключение out_of_range, если индекс переданного документа выходит за пределы
@@ -306,9 +273,13 @@ private:
             return 0;
         }
         int rating_sum = 0;
+
+// предлагаю пока оставить так. Мы пока итераторы не проходили (я могу, конечно:   rating_sum = accumulate(ratings.begin(), ratings.end(), 0);)
+//  на этапе ревю первой работы ревьювер сказал что не надо итератор, а абычный цикл  (Федоров или Федор - не помню).
         for (const int rating : ratings) {
-            rating_sum += rating;
-        }
+            rating_sum += rating;  
+        }          
+       
         return rating_sum / static_cast<int>(ratings.size());
     }
 
@@ -320,10 +291,33 @@ private:
 
     QueryWord ParseQueryWord(string text) const {
         bool is_minus = false;
+        
+        if (TextHaveSpecialSymbol(text))
+        {
+            throw invalid_argument("Text Have Special Symbol");
+        }
+        
         // Word shouldn't be empty
         if (text[0] == '-') {
             is_minus = true;
             text = text.substr(1);
+            
+            if (text.size() == 0)
+            {
+                throw invalid_argument("In Text Last Symbol Is Minus");
+            }
+            else
+            {
+                if (text[0] == ' ')
+                {
+                    throw invalid_argument("In Text after Minus next - Spase");
+                }
+            	
+                if (text[0] == '-')
+                {
+                    throw invalid_argument("Text Have Two Minuses");
+                }
+			}
         }
         return { text, is_minus, IsStopWord(text) };
     }
@@ -387,6 +381,29 @@ private:
         }
         return matched_documents;
     }
+    
+    bool TextHaveSpecialSymbol(const string& text) const
+    {
+    for (const char c : text) {
+        if (IsSpecialSymbol(c))
+        {
+            return true;
+        }
+    }
+    
+    return false;
+    }
+    
+	template <typename StringContainer>
+	bool TextsHavesSpecialSymbol(const StringContainer& strings) {
+    for (const string& str : strings) {
+        if (TextHaveSpecialSymbol(str))
+        {
+            return true;
+        }
+    }
+    return false;
+	}
 };
 
 //Пример использования класса поисковой системы с обновлённым интерфейсом :
