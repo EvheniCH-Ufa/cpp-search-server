@@ -1,5 +1,3 @@
-// p03_05_06_ObrabotkaOshibokVPoiskovojSisteme.cpp
-
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -28,27 +26,6 @@ int ReadLineWithNumber() {
     ReadLine();
     return result;
 }
-
-bool IsSpecialSymbol(const char c)
-{
-    const int index = c;
-    if (index >= 0 && index <= 31)
-    {
-        return true;
-    }
-    return false;
-}
-
-bool InTextLastSymbolIsMinus(const string& text)
-{
-    size_t text_len = text.size();
-    if (text_len > 0 && text[text_len - 1] == '-')
-    {
-        return true;
-    }
-    return false;
-}
-
 
 vector<string> SplitIntoWords(const string& text) {
     vector<string> words;
@@ -275,7 +252,7 @@ private:
         int rating_sum = 0;
 
 // предлагаю пока оставить так. Мы пока итераторы не проходили (я могу, конечно:   rating_sum = accumulate(ratings.begin(), ratings.end(), 0);)
-//  на этапе ревю первой работы ревьювер сказал что не надо итератор, а абычный цикл  (Федоров или Федор - не помню).
+//  на этапе ревю первой работы ревьювер сказал что не надо итератор, а обычный цикл  (Федоров или Федор - не помню).
         for (const int rating : ratings) {
             rating_sum += rating;  
         }          
@@ -302,22 +279,20 @@ private:
             is_minus = true;
             text = text.substr(1);
             
-            if (text.size() == 0)
+            if (text.empty())
             {
                 throw invalid_argument("In Text Last Symbol Is Minus");
             }
-            else
+            /* тогда она отмирает насовсем
+            if (text[0] == ' ')
             {
-                if (text[0] == ' ')
-                {
-                    throw invalid_argument("In Text after Minus next - Spase");
-                }
+                throw invalid_argument("In Text after Minus next - Spase");
+            }*/
             	
-                if (text[0] == '-')
-                {
-                    throw invalid_argument("Text Have Two Minuses");
-                }
-			}
+            if (text[0] == '-')
+            {
+                throw invalid_argument("Text Have Two Minuses");
+            }
         }
         return { text, is_minus, IsStopWord(text) };
     }
@@ -381,28 +356,51 @@ private:
         }
         return matched_documents;
     }
-    
-    bool TextHaveSpecialSymbol(const string& text) const
+
+
+    bool IsSpecialSymbol(const char c) const
     {
-    for (const char c : text) {
-        if (IsSpecialSymbol(c))
+        const int index = c;
+        if (index >= 0 && index <= 31)
         {
             return true;
         }
+        return false;
     }
+
+/*
+    bool InTextLastSymbolIsMinus(const string& text)
+    {
+        size_t text_len = text.size();
+        if (text_len > 0 && text[text_len - 1] == '-')
+        {
+            return true;
+        }
+        return false;
+    }*/
+    
+    bool TextHaveSpecialSymbol(const string& text) const
+    {
+        for (const char c : text)
+		{
+            if (IsSpecialSymbol(c))
+            {
+                return true;
+            }
+        }
     
     return false;
     }
     
 	template <typename StringContainer>
 	bool TextsHavesSpecialSymbol(const StringContainer& strings) {
-    for (const string& str : strings) {
-        if (TextHaveSpecialSymbol(str))
-        {
-            return true;
+        for (const string& str : strings) {
+            if (TextHaveSpecialSymbol(str))
+            {
+                return true;
+            }
         }
-    }
-    return false;
+        return false;
 	}
 };
 
