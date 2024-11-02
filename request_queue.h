@@ -15,16 +15,7 @@ public:
     }
 
     template <typename DocumentPredicate>
-    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate) {
-        
-        std::vector<Document> result = server_.FindTopDocuments(raw_query, document_predicate);
-        requests_.push_back({ raw_query, result });
-        if (requests_.size() > min_in_day_)
-        {
-            requests_.pop_front();
-        }
-        return result;
-    }
+    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate);
 
     std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentStatus status);
 
@@ -44,3 +35,17 @@ private:
     // возможно, здесь вам понадобится что-то ещё
     const SearchServer& server_;
 };
+
+
+    template <typename DocumentPredicate>
+    std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate) {
+        
+        std::vector<Document> result = server_.FindTopDocuments(raw_query, document_predicate);
+        requests_.push_back({ raw_query, result });
+        if (requests_.size() > min_in_day_)
+        {
+            requests_.pop_front();
+        }
+        return result;
+    }
+
