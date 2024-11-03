@@ -3,15 +3,14 @@
 #include <deque>
 #include <string>
 #include <vector>
+
 #include "search_server.h"
 #include "document.h"
-
 
 class RequestQueue {
 public:
     explicit RequestQueue(const SearchServer& search_server) : server_(search_server)
     {
-        // напишите реализацию
     }
 
     template <typename DocumentPredicate>
@@ -35,7 +34,6 @@ private:
     // возможно, здесь вам понадобится что-то ещё
     const SearchServer& server_;
 };
-
 
     template <typename DocumentPredicate>
     std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate) {

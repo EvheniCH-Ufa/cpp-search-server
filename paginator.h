@@ -6,8 +6,6 @@
 #include "document.cpp"
 #include "read_input_functions.cpp"
 
-
-
 template <typename Iterator>
 class IteratorRange
 {
@@ -95,8 +93,6 @@ private:
     std::vector<IteratorRange<Iterator>> pages_;
     int page_count_;
 };
-
-
 
 template <typename Container>
 auto Paginate(const Container& c, size_t page_size) {

@@ -1,15 +1,9 @@
-// p04_03_04_OcheredZaprosov.cpp
-
 #include <iostream>
+
 #include "paginator.h"
 #include "document.h"
-
 #include "search_server.h"
-
-
 #include "request_queue.h"
-
-
 #include "read_input_functions.h"
 
 using namespace std;

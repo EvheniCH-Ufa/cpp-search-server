@@ -2,7 +2,6 @@
 
 #include <iostream>
 
-
 std::string ReadLine() {
     std::string s;
     std::getline(std::cin, s);

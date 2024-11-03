@@ -1,8 +1,6 @@
 #pragma once
 
-#include "document.h"
-#include <iostream>
-
+#include <string>
 
 std::string ReadLine();
 
